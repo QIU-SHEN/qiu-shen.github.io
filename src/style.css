@@ -1,0 +1,78 @@
+:root {
+  /* 暗色主题变量 */
+  --bg-primary: #000000;                     /* 背景 */
+  --bg-secondary: #1a1a1a;                  /* 导航 页脚 按钮*/
+  --bg-third: rgb(173, 176, 176);           /* 搜索框 */
+  --bg-dialog:rgba(0, 0, 0, 0.5);
+  --card:#1a1a1a;                           /* 卡片 */
+  --text-primary: rgb(255, 255, 255);       /* 主要文字 */
+  --text-secondary: #ffb6c1a6;              /* 搜索框底 */
+  --text-third: #000000;                    /* about中字体 */
+  --mk-primary: #ff69b4;                    /* 高亮 文章字体 按钮*/
+  --mk-second: rgba(255, 44, 128, 0.5);       /* join阴影 */
+  --ripple: rgba(255, 44, 128, 0.8);          /* join波纹 */
+  --border:rgba(255, 105, 180, 0.3);        /* 边框 */
+  --border-second:rgba(255, 44, 128, 0.1);     /* join边框 */
+  --shadow: 0 4px 12px rgba(255, 255, 255, 0.3), 
+    0 0 0 1px rgba(255, 255, 255, 0.05), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);   /* 各种模块 卡片 阴影 */
+  --shadow2:0 4px 8px rgba(255, 255, 255, 0.1); /* 日志阴影 */
+  --bg-image1: url('public/dark1.png');
+  --bg-image2: url('public/dark2.png');
+  --bg-image3: url('public/dark3.png');
+}
+
+.nodark {
+  /* 亮色主题变量 */
+  --bg-primary: #f0f8ff;
+  --bg-secondary: rgba(92, 107, 192, 0.1);
+  --bg-third: #6572be;
+  --bg-dialog:rgba(255, 255, 255, 0.2);
+  --card:rgba(255,255,255,0.8);
+  --text-primary: #37474f; 
+  --text-secondary: #bbdefb;
+  --text-third: #ffffff;
+  --mk-primary: #6572be;
+  --mk-second: rgba(44, 44, 255, 0.5);
+  --ripple: rgba(114, 44, 255, 0.8); 
+  --border:rgba(105, 125, 255, 0.3);
+  --border-second:rgba(105, 125, 255, 0.1);
+  --shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  --shadow2:0 4px 8px rgba(0, 0, 0, 0.1);
+  --bg-image1: url('public/light1.png');
+  --bg-image2: url('public/light2.png');
+  --bg-image3: url('public/light3.png');
+}
+
+body{
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#back{
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.3s ease-in-out;
+}
+#app {
+    height: 100%;
+    width: 100%;
+    
+}
+.divider{
+    border: 1px solid #ccc;  /* 有边框 */
+    margin: 10px 0;          /* 有间距 */
+    width: 100%;  
+}
+
+@font-face {
+    font-family: '优设标题黑';
+    src: url('src/assets/YouSheBiaoTiHei-2.ttf');
+}
