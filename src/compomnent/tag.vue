@@ -5,7 +5,7 @@
 <script setup>
 const props = defineProps({
     tag:{
-        style:String,
+        type:String,
         default:'空白'
     }
 })
@@ -13,17 +13,25 @@ const props = defineProps({
 
 <style scoped>
 .tag{
-    display: flex;  
-    justify-content: center;
+    display: inline-flex;
     align-items: center;
-    padding: 5px;
-    border-radius: 20px;
-    background-color: rgba(102, 255, 176, 0.3);
-    border: 2px solid rgba(102, 255, 176);
-    min-width: 40px;
-    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-primary);
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: nowrap;
+    opacity: 0.68;
+    transition: color 0.15s ease, opacity 0.15s ease;
+}
+.tag::before {
+    content: '#';
+    margin-right: 1px;
+    color: var(--mk-primary);
 }
 .tag:hover{
-     transform: translateY(-8px) scale(1.15);
+    color: var(--mk-primary);
+    opacity: 1;
 }
 </style>

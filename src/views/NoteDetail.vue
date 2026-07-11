@@ -4,17 +4,23 @@
     <aside class="doc-sidebar">
       <div class="sidebar-header">
         <h2>笔记</h2>
+        <span class="sidebar-count">{{ notes.length }}</span>
       </div>
       <ul class="sidebar-list">
         <li
           v-for="n in notes"
           :key="n.id"
           class="sidebar-item"
-          :class="{ active: n.id === noteId }"
           @click="router.push(`/Notes/${n.id}`)"
         >
           <span class="sidebar-item-title">{{ n.title }}</span>
-          <span class="sidebar-item-meta">{{ formatDate(n.updatedAt) }}</span>
+          <div class="sidebar-item-meta">
+            <span v-if="n.updatedAt">{{ formatDate(n.updatedAt) }}</span>
+            <span v-if="n.updatedAt && n.tags.length" aria-hidden="true">·</span>
+            <div v-if="n.tags.length" class="sidebar-item-tags">
+              <Tag v-for="t in n.tags" :key="t" :tag="t" />
+            </div>
+          </div>
         </li>
         <li v-if="notes.length === 0" class="sidebar-empty">
           暂无笔记
@@ -31,44 +37,49 @@
         <header class="article-header">
           <h1 class="article-title">{{ note.title }}</h1>
           <div class="article-meta">
-            <span v-if="note.updatedAt" class="meta-item">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-              {{ formatDate(note.updatedAt) }}
-            </span>
-            <span v-if="note.tags.length" class="meta-item meta-tags">
+            <span v-if="note.updatedAt">{{ formatDate(note.updatedAt) }}</span>
+            <span v-if="note.updatedAt" aria-hidden="true">·</span>
+            <span>{{ wordCount.toLocaleString() }} 字</span>
+            <span aria-hidden="true">·</span>
+            <span>{{ readingTime }}</span>
+            <div v-if="note.tags.length" class="meta-tags">
               <Tag v-for="t in note.tags" :key="t" :tag="t" />
-            </span>
-            <span class="meta-item">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-              约 {{ wordCount }} 字
-            </span>
-            <span class="meta-item">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
-              {{ readingTime }}
-            </span>
+            </div>
           </div>
-          <hr class="article-divider" />
         </header>
 
         <!-- 文章内容 -->
         <div class="article-content" ref="contentRef">
-          <Markdown :source="note.content" />
+          <Markdown :source="renderedContent" />
         </div>
       </article>
     </main>
 
     <!-- 右侧悬浮 TOC -->
     <aside class="doc-toc" v-if="headings.length">
-      <div class="toc-header">此页内容</div>
+      <div class="toc-header">目录</div>
       <ul class="toc-list">
         <li
-          v-for="h in headings"
+          v-for="h in visibleHeadings"
           :key="h.id"
           class="toc-item"
           :class="['toc-h' + h.level, { active: activeHeading === h.id }]"
-          @click="scrollToHeading(h.id)"
         >
-          {{ h.text }}
+          <button
+            v-if="h.hasChildren"
+            class="toc-toggle"
+            :class="{ expanded: !isHeadingCollapsed(h.id) }"
+            type="button"
+            :aria-expanded="!isHeadingCollapsed(h.id)"
+            :aria-label="`${isHeadingCollapsed(h.id) ? '展开' : '收起'}${h.text}`"
+            @click.stop="toggleHeading(h.id)"
+          >
+            <span class="toc-toggle-icon" aria-hidden="true">›</span>
+          </button>
+          <span v-else class="toc-toggle-spacer" aria-hidden="true"></span>
+          <button class="toc-link" type="button" @click="scrollToHeading(h.id)">
+            {{ h.text }}
+          </button>
         </li>
       </ul>
     </aside>
@@ -90,29 +101,64 @@ const contentRef = ref(null)
 const headings = ref([])
 const activeHeading = ref('')
 const mainRef = ref(null)
-
-const noteId = computed(() => route.params.id)
+const collapsedHeadingIds = ref(new Set())
 
 const formatDate = (ts) => {
   if (!ts) return ''
   const d = new Date(ts)
   const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`
 }
+
+const normalizeHeading = (text) =>
+  text.replace(/[*_`]/g, '').replace(/\s+#+\s*$/, '').trim()
+
+const renderedContent = computed(() => {
+  if (!note.value) return ''
+  const content = note.value.content
+  const heading = /^\s*#{1,3}\s+(.+?)\r?\n/.exec(content)
+  if (!heading || normalizeHeading(heading[1]) !== normalizeHeading(note.value.title)) {
+    return content
+  }
+  return content
+    .slice(heading[0].length)
+    .replace(/^\s+/, '')
+    .replace(/^(?:\+\+\+|---)\s*\r?\n\s*/, '')
+})
 
 const wordCount = computed(() => {
   if (!note.value) return 0
-  return note.value.content.replace(/\s/g, '').length
+  return renderedContent.value.replace(/\s/g, '').length
 })
 
 const readingTime = computed(() => {
   const mins = Math.max(1, Math.ceil(wordCount.value / 300))
-  return `约 ${mins} 分钟`
+  return `${mins} 分钟阅读`
 })
+
+const visibleHeadings = computed(() => {
+  const collapsed = collapsedHeadingIds.value
+  return headings.value.filter((heading) =>
+    !heading.parentIds.some((parentId) => collapsed.has(parentId))
+  )
+})
+
+const isHeadingCollapsed = (id) => collapsedHeadingIds.value.has(id)
+
+const toggleHeading = (id) => {
+  const next = new Set(collapsedHeadingIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else {
+    next.add(id)
+  }
+  collapsedHeadingIds.value = next
+}
 
 const loadNote = async () => {
   note.value = getNote(route.params.id)
   headings.value = []
+  collapsedHeadingIds.value = new Set()
   if (!note.value) return
   await nextTick()
   extractHeadings()
@@ -125,12 +171,35 @@ const extractHeadings = () => {
     if (!contentRef.value) return
     const els = contentRef.value.querySelectorAll('h1, h2, h3, h4')
     const list = []
+    const stack = []
     els.forEach((el, i) => {
       const id = `heading-${i}`
+      const level = parseInt(el.tagName[1])
       el.id = id
-      list.push({ id, level: parseInt(el.tagName[1]), text: el.textContent })
+
+      while (stack.length && stack[stack.length - 1].level >= level) {
+        stack.pop()
+      }
+
+      const heading = {
+        id,
+        level,
+        text: el.textContent,
+        parentIds: stack.map((parent) => parent.id),
+        hasChildren: false,
+      }
+
+      if (stack.length) {
+        stack[stack.length - 1].hasChildren = true
+      }
+
+      list.push(heading)
+      stack.push(heading)
     })
     headings.value = list
+    collapsedHeadingIds.value = new Set(
+      list.filter((heading) => heading.hasChildren).map((heading) => heading.id)
+    )
     if (list.length) activeHeading.value = list[0].id
   })
 }
@@ -192,14 +261,14 @@ watch(() => route.params.id, () => {
   position: fixed;
   top: 0;
   left: 0;
+  background-color: var(--bg-primary);
 }
 
-/* ===== 左侧侧边栏 ===== */
 .doc-sidebar {
-  width: 260px;
+  width: 248px;
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
-  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--bg-secondary);
+  background-color: var(--bg-primary);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -211,14 +280,19 @@ watch(() => route.params.id, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 26px 20px 18px;
 }
 .sidebar-header h2 {
   margin: 0;
-  font-size: 18px;
-  color: var(--mk-primary);
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-primary);
   font-family: '优设标题黑', sans-serif;
+}
+.sidebar-count {
+  color: var(--text-primary);
+  font-size: 12px;
+  opacity: 0.38;
 }
 
 .sidebar-list {
@@ -226,57 +300,65 @@ watch(() => route.params.id, () => {
   overflow-y: auto;
   list-style: none;
   margin: 0;
-  padding: 8px 0;
+  padding: 2px 10px 72px;
 }
 .sidebar-list::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 .sidebar-list::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 2px;
 }
 
 .sidebar-item {
-  padding: 10px 16px;
+  padding: 11px 10px 12px;
   cursor: pointer;
-  transition: all 0.2s;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  border-left: 3px solid transparent;
+  gap: 7px;
 }
-.sidebar-item:hover {
-  background-color: var(--bg-primary);
-}
-.sidebar-item.active {
-  background-color: var(--bg-primary);
-  border-left-color: var(--mk-primary);
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-item:hover .sidebar-item-title {
+    color: var(--mk-primary);
+  }
 }
 .sidebar-item-title {
   font-size: 14px;
+  line-height: 1.35;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.15s ease;
+}
+.sidebar-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 .sidebar-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+}
+.sidebar-item-meta > span {
+  opacity: 0.48;
 }
 
 .sidebar-empty {
-  padding: 20px 16px;
+  padding: 24px 10px;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 13px;
+  opacity: 0.45;
 }
 
-/* ===== 中间主内容区 ===== */
 .doc-main {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding: 32px 40px 60px;
+  padding: 48px 48px 100px;
 }
 .doc-main::-webkit-scrollbar {
   width: 6px;
@@ -288,75 +370,159 @@ watch(() => route.params.id, () => {
 
 .state {
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   padding: 80px 20px;
+  opacity: 0.45;
 }
 
-/* 文章头 */
 .article-header {
-  margin-bottom: 8px;
+  margin-bottom: 46px;
 }
 .article-title {
-  margin: 0 0 12px;
-  font-size: 28px;
-  font-weight: 700;
+  margin: 0 0 14px;
+  font-size: 40px;
+  font-weight: 400;
   color: var(--text-primary);
-  line-height: 1.4;
+  font-family: '优设标题黑', sans-serif;
+  line-height: 1.18;
 }
 
 .article-meta {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   flex-wrap: wrap;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.article-meta > span {
+  opacity: 0.48;
 }
 .meta-tags {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
+  margin-left: 6px;
 }
 
-.article-divider {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 16px 0;
+.doc-article {
+  width: min(820px, 100%);
+  margin: 0 auto;
 }
 
-/* 文章内容 */
 .article-content {
-  max-width: 800px;
+  max-width: none;
+}
+.article-content :deep(.markdown-body) {
+  font-size: 16px;
+  line-height: 1.9;
+}
+.article-content :deep(.markdown-body > :first-child) {
+  margin-top: 0;
+}
+.article-content :deep(.markdown-body h1) {
+  margin: 56px 0 20px;
+  padding: 0;
+  border: 0;
+  font-size: 30px;
+  line-height: 1.35;
+}
+.article-content :deep(.markdown-body h2) {
+  margin: 44px 0 16px;
+  font-size: 24px;
+  line-height: 1.4;
+}
+.article-content :deep(.markdown-body h3) {
+  margin: 32px 0 12px;
+  font-size: 19px;
+  line-height: 1.5;
+}
+.article-content :deep(.markdown-body h4) {
+  margin: 26px 0 10px;
+  font-size: 17px;
+  line-height: 1.5;
+}
+.article-content :deep(.markdown-body p) {
+  margin: 14px 0;
+}
+.article-content :deep(.markdown-body ul),
+.article-content :deep(.markdown-body ol) {
+  margin: 14px 0;
+}
+.article-content :deep(.markdown-body li) {
+  margin: 6px 0;
+}
+.article-content :deep(.markdown-body a) {
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.article-content :deep(.markdown-body blockquote) {
+  margin: 24px 0;
+  padding: 2px 0 2px 18px;
+  border-left: 2px solid var(--mk-primary);
+  border-radius: 0;
+  background: none;
+  color: var(--text-primary);
+  opacity: 0.78;
+}
+.article-content :deep(.markdown-body code) {
+  border-radius: 2px;
+}
+.article-content :deep(.markdown-body pre) {
+  margin: 24px 0;
+  padding: 18px 20px;
+  border: 0;
+  border-left: 2px solid var(--mk-primary);
+  border-radius: 0;
+  background-color: var(--bg-secondary);
+}
+.article-content :deep(.markdown-body hr) {
+  margin: 36px 0;
+  border-top-color: var(--bg-secondary);
+}
+.article-content :deep(.markdown-body table) {
+  margin: 22px 0;
+  border-top: 1px solid var(--bg-secondary);
+}
+.article-content :deep(.markdown-body th),
+.article-content :deep(.markdown-body td) {
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--bg-secondary);
+}
+.article-content :deep(.markdown-body th) {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.article-content :deep(.markdown-body img) {
+  display: block;
+  margin: 28px auto;
+  border-radius: 2px;
 }
 
-/* ===== 右侧 TOC ===== */
 .doc-toc {
-  width: 200px;
+  width: 190px;
   flex-shrink: 0;
-  padding: 16px 12px;
-  border-left: 1px solid var(--border);
+  padding: 30px 14px 80px 0;
+  border-left: 0;
   overflow-y: auto;
   user-select: none;
   -webkit-user-select: none;
 }
 .doc-toc::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 .doc-toc::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 2px;
 }
 
 .toc-header {
-  font-size: 13px;
-  font-weight: 600;
+  margin: 0 0 14px 18px;
+  font-size: 12px;
+  font-weight: 400;
   color: var(--text-primary);
-  margin-bottom: 10px;
+  opacity: 0.38;
 }
 
 .toc-list {
@@ -365,47 +531,210 @@ watch(() => route.params.id, () => {
   padding: 0;
 }
 .toc-item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   font-size: 13px;
-  color: var(--text-secondary);
-  padding: 4px 0;
-  cursor: pointer;
-  transition: color 0.15s;
+  color: var(--text-primary);
+  opacity: 0.48;
+  transition: color 0.15s, opacity 0.15s;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .toc-item:hover {
-  color: var(--mk-primary);
+  opacity: 0.78;
 }
 .toc-item.active {
   color: var(--mk-primary);
   font-weight: 600;
+  opacity: 1;
 }
-.toc-h2 { padding-left: 0; }
-.toc-h3 { padding-left: 14px; }
-.toc-h4 { padding-left: 28px; }
+.toc-toggle,
+.toc-toggle-spacer {
+  width: 18px;
+  height: 24px;
+  flex: 0 0 18px;
+}
+.toc-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.toc-toggle-icon {
+  display: block;
+  font-size: 16px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.18s ease;
+}
+.toc-toggle.expanded .toc-toggle-icon {
+  transform: rotate(90deg);
+}
+.toc-toggle:focus-visible,
+.toc-link:focus-visible {
+  outline: none;
+  color: var(--mk-primary);
+}
+.toc-link {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.toc-h1 { padding-left: 0; }
+.toc-h2 { padding-left: 6px; }
+.toc-h3 { padding-left: 18px; }
+.toc-h4 { padding-left: 30px; }
 
 /* 响应式 */
-@media (max-width: 1000px) {
+@media (min-width: 1600px) {
+  .doc-main {
+    padding: 56px clamp(72px, 7vw, 120px) 110px;
+  }
+
+  .doc-article {
+    width: min(940px, 100%);
+  }
+
+  .article-title {
+    font-size: 46px;
+  }
+
+  .article-meta {
+    font-size: 14px;
+  }
+
+  .article-content :deep(.markdown-body) {
+    font-size: 18px;
+    line-height: 1.9;
+  }
+
+  .article-content :deep(.markdown-body h1) {
+    margin-top: 64px;
+    font-size: 34px;
+  }
+
+  .article-content :deep(.markdown-body h2) {
+    margin-top: 50px;
+    font-size: 27px;
+  }
+
+  .article-content :deep(.markdown-body h3) {
+    margin-top: 36px;
+    font-size: 21px;
+  }
+
+  .article-content :deep(.markdown-body p) {
+    margin: 16px 0;
+  }
+
+  .article-content :deep(.markdown-body li) {
+    margin: 7px 0;
+  }
+
+  .article-content :deep(.markdown-body code),
+  .article-content :deep(.markdown-body pre code) {
+    font-size: 14px;
+  }
+
+  .doc-toc {
+    width: 210px;
+    padding: 38px 20px 90px 0;
+  }
+
+  .toc-item {
+    font-size: 14px;
+  }
+
+  .toc-item {
+    min-height: 27px;
+  }
+}
+
+@media (max-width: 1100px) {
   .doc-toc {
     display: none;
   }
 }
 @media (max-width: 768px) {
   .doc-layout {
+    position: relative;
+    top: auto;
+    left: auto;
     flex-direction: column;
-    height: auto;
-    overflow: visible;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
   }
   .doc-sidebar {
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid var(--border);
-    max-height: 200px;
+    border-bottom: 1px solid var(--bg-secondary);
+    max-height: 36dvh;
+  }
+  .sidebar-header {
+    padding: 4px 10px 14px;
+  }
+  .sidebar-header h2 {
+    font-size: 21px;
+  }
+  .sidebar-list {
+    padding: 0 0 20px;
   }
   .doc-main {
-    overflow-y: visible;
-    padding: 20px;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 24px 4px 64px;
+  }
+
+  .article-header {
+    margin-bottom: 34px;
+  }
+
+  .article-title {
+    font-size: 32px;
+  }
+
+  .article-meta {
+    gap: 7px;
+    font-size: 12px;
+  }
+
+  .article-content :deep(.markdown-body) {
+    font-size: 15px;
+    line-height: 1.85;
+  }
+
+  .article-content :deep(.markdown-body h1) {
+    margin-top: 42px;
+    font-size: 26px;
+  }
+
+  .article-content :deep(.markdown-body h2) {
+    margin-top: 36px;
+    font-size: 22px;
+  }
+
+  .article-content :deep(.markdown-body h3) {
+    margin-top: 28px;
+    font-size: 18px;
+  }
+
+  .article-content :deep(.markdown-body pre) {
+    margin: 20px 0;
+    padding: 14px;
   }
 }
 </style>

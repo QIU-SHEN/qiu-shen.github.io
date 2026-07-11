@@ -110,4 +110,29 @@ const html = computed(() =>
   max-width: 100%;
   border-radius: 8px;
 }
+
+@media (max-width: 768px) {
+  .markdown-body {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .markdown-body :deep(h1) {
+    font-size: 24px;
+  }
+
+  .markdown-body :deep(h2) {
+    font-size: 20px;
+  }
+
+  .markdown-body :deep(pre) {
+    padding: 12px;
+  }
+
+  .markdown-body :deep(table) {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
 </style>

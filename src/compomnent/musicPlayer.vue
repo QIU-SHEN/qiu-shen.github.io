@@ -1,307 +1,391 @@
 <template>
-    <div class="cover unselectable" v-if="showMusicPlayer">
-        <div class="iconfont icon-guanbi" @click="exitPlayer"></div>
-        <div class="img-box">
-            <img :src="imgUrl" width="100px" height="100px">
+    <div v-if="currentTrack" class="music-player-host">
+        <audio
+            ref="audioElement"
+            class="music-element"
+            :src="currentTrack.music"
+            :loop="isRepeat"
+            preload="metadata"
+            @loadedmetadata="handleLoadedMetadata"
+            @durationchange="handleLoadedMetadata"
+            @timeupdate="handleTimeUpdate"
+            @play="isPlaying = true"
+            @pause="isPlaying = false"
+            @ended="handleEnded"
+            @error="handleAudioError"
+        ></audio>
+
+        <div
+            v-if="playerMode === 'expanded'"
+            class="cover unselectable"
+            role="dialog"
+            aria-modal="true"
+            :aria-label="`音乐播放器：${currentTrack.MusicName}`"
+        >
+            <button
+                class="close-button iconfont icon-guanbi"
+                type="button"
+                aria-label="收起播放器"
+                title="收起播放器"
+                @click="minimizePlayer"
+            ></button>
+
+            <div class="img-box">
+                <img
+                    :src="currentTrack.img"
+                    :alt="`${currentTrack.MusicName}封面`"
+                    width="100"
+                    height="100"
+                >
+            </div>
+
+            <div class="info">
+                <div class="MusicName">{{ currentTrack.MusicName }}</div>
+                <div class="singer">{{ currentTrack.singer }}</div>
+            </div>
+
+            <div v-show="showVolume" class="volume-box">
+                <button class="volume-step" type="button" aria-label="降低音量" @click="volumeDown">−</button>
+                <input
+                    v-model.number="volumeValue"
+                    class="volume-range"
+                    type="range"
+                    step="1"
+                    min="0"
+                    max="100"
+                    aria-label="音量"
+                    :style="volumeStyle"
+                    @input="updateVolume"
+                >
+                <button class="volume-step" type="button" aria-label="提高音量" @click="volumeUp">+</button>
+            </div>
+
+            <div class="btn-box">
+                <button
+                    type="button"
+                    aria-label="循环播放"
+                    :aria-pressed="isRepeat"
+                    @click="toggleRepeat"
+                >
+                    <i class="iconfont icon-xunhuan" :class="{ active: isRepeat }"></i>
+                </button>
+                <button
+                    type="button"
+                    aria-label="收藏"
+                    :aria-pressed="isFavorite"
+                    @click="toggleFavorite"
+                >
+                    <i class="iconfont icon-aixin_shixin" :class="{ active: isFavorite }"></i>
+                </button>
+                <button
+                    type="button"
+                    aria-label="显示音量控制"
+                    :aria-expanded="showVolume"
+                    @click="showVolume = !showVolume"
+                >
+                    <i class="iconfont icon-shengyin_shiti" :class="{ active: showVolume }"></i>
+                </button>
+            </div>
+
+            <div class="music-box">
+                <span class="current-time">{{ formatTime(currentTime) }}</span>
+                <input
+                    v-model.number="progressValue"
+                    class="Progress-bar"
+                    type="range"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    aria-label="播放进度"
+                    :aria-valuetext="`${formatTime(currentTime)} / ${formatTime(duration)}`"
+                    :disabled="duration <= 0"
+                    :style="progressStyle"
+                    @pointerdown="isSeeking = true"
+                    @input="previewProgress"
+                    @change="commitProgress"
+                >
+                <span class="duration">{{ formatTime(duration) }}</span>
+            </div>
+
+            <p v-if="loadError" class="player-error" role="status">{{ loadError }}</p>
+
+            <button
+                class="play"
+                type="button"
+                :aria-label="isPlaying ? '暂停音乐' : '播放音乐'"
+                @click="togglePlay"
+            >
+                <i class="iconfont" :class="isPlaying ? 'icon-zanting' : 'icon-kaishi1'"></i>
+            </button>
         </div>
-        <div class="info">
-            <div class="MusicName">{{ MusicName }}</div>
-            <div class="singer">{{ singer }}</div>
-        </div>
-        <div class="volume-box" v-show="showVolume">
-            <span class="volume-down" @click="volumeDown"><i>-</i></span>
-            <input type="range" class="volume-range" step="1" v-model.number="inputRange" @input="updateVolume" min="0"
-                max="100" :style="{
-                    background: `linear-gradient(to right, #555 0%, #555 ${volumeRange}, #ffffff ${volumeRange}, #ffffff 100%)`
-                }">
-            <span class="volume-up" @click="volumeUp"><i>+</i></span>
-        </div>
-        <div class="btn-box">
-            <i class="iconfont icon-xunhuan" @click="repeat" :style="repeat_color"></i>
-            <i class="iconfont icon-aixin_shixin" @click="favorite" :style="favorite_color"></i>
-            <i class="iconfont icon-shengyin_shiti" @click="volume" :style="volume_color"></i>
-        </div>
-        <div class="music-box">
-            <span class="current-time">{{ formatTime(currentTime) }}</span>
-            <input type="range" class="Progress-bar" step="1" v-model="inputeProgress" @input="updateProgress"
-                @change="updateMusic" :style="{
-                    background: `linear-gradient(to right, #555 0%, #555 ${progressRange}, #ffffff ${progressRange}, #ffffff 100%)`
-                }">
-            <audio ref="audioElement" class="music-element">
-                <source :src="musicUrl">
-            </audio>
-            <span class="duration">{{ formatTime(duration) }}</span>
-        </div>
-        <div class="play" @click="play">
-            <div :class="isPlay"></div>
-        </div>
+
+        <MiniMusicPlayer
+            v-else-if="playerMode === 'minimized'"
+            :track="currentTrack"
+            :is-playing="isPlaying"
+            @expand="expandPlayer"
+            @toggle="togglePlay"
+            @close="stopPlayer"
+        />
     </div>
 </template>
 
 <script setup>
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import MiniMusicPlayer from './miniMusicPlayer.vue'
+import { useMusicPlayer } from '../composables/useMusicPlayer.js'
 
-// 格式化时间
+const {
+    currentTrack,
+    playerMode,
+    expandPlayer,
+    minimizePlayer,
+    closePlayer
+} = useMusicPlayer()
 
-import { onMounted, onUnmounted, ref, watch, computed } from 'vue'
-
-const emits = defineEmits(['show'])
-
-const props = defineProps({
-    showMusicPlayer: Boolean,
-    MusicName: String,
-    singer: String,
-    imgUrl: String,
-    musicUrl: String
-})
-
-const isPlay = ref('iconfont icon-kaishi1')
 const audioElement = ref(null)
-const inputRange = ref(80)
-const inputeProgress = ref(0)
+const isPlaying = ref(false)
+const isSeeking = ref(false)
+const showVolume = ref(false)
+const isRepeat = ref(false)
+const isFavorite = ref(false)
+const volumeValue = ref(80)
+const progressValue = ref(0)
 const currentTime = ref(0)
 const duration = ref(0)
-const repeat_color = ref('')
-const favorite_color = ref('')
-const volume_color = ref('')
-const showVolume = ref(false)
-let flag_isPlay = false
-let flag_Input = false
-let flag_repeat = false
-let flag_favorite = false
+const loadError = ref('')
 
-//进度条覆盖区域着色
-const progressRange = computed(() => {
-    return inputeProgress.value + '%'
-})
-const volumeRange = computed(() => {
-    return inputRange.value + '%'
+const rangeStyle = (value) => ({
+    background: `linear-gradient(to right, var(--mk-primary) 0%, var(--mk-primary) ${value}%, var(--text-secondary) ${value}%, var(--text-secondary) 100%)`
 })
 
-// 播放/暂停控制
-const play = async () => {
-    flag_isPlay = !flag_isPlay
-    if (flag_isPlay) {
-        await audioElement.value.play()
-        isPlay.value = 'iconfont icon-zanting'
+const progressStyle = computed(() => rangeStyle(progressValue.value))
+const volumeStyle = computed(() => rangeStyle(volumeValue.value))
+
+const resetTimeline = () => {
+    isPlaying.value = false
+    isSeeking.value = false
+    progressValue.value = 0
+    currentTime.value = 0
+    duration.value = 0
+    loadError.value = ''
+}
+
+const resetPlayer = () => {
+    resetTimeline()
+    showVolume.value = false
+    isRepeat.value = false
+    isFavorite.value = false
+    volumeValue.value = 80
+}
+
+watch(
+    () => currentTrack.value?.music,
+    async (musicUrl, previousUrl) => {
+        if (!musicUrl) {
+            resetPlayer()
+            return
+        }
+
+        if (previousUrl && audioElement.value) {
+            audioElement.value.pause()
+        }
+
+        resetTimeline()
+        await nextTick()
+
+        if (audioElement.value) {
+            audioElement.value.volume = volumeValue.value / 100
+            audioElement.value.load()
+        }
+    }
+)
+
+const togglePlay = async () => {
+    const audio = audioElement.value
+    if (!audio) return
+
+    if (audio.paused) {
+        try {
+            loadError.value = ''
+            await audio.play()
+        } catch {
+            isPlaying.value = false
+            loadError.value = '暂时无法播放，请重新选择歌曲'
+        }
     } else {
-        audioElement.value.pause()
-        isPlay.value = 'iconfont icon-kaishi1'
+        audio.pause()
     }
 }
 
-// Promise保证条件达成再执行
-const waitUntil = (condition) => {
-    return new Promise((resolve) => {
-        const check = () => {
-            if (condition()) {
-                resolve('完成')
-            } else {
-                setTimeout(check, 100)
-            }
-        }
-        check()
-    })
+const handleLoadedMetadata = () => {
+    const audio = audioElement.value
+    if (!audio) return
+
+    duration.value = Number.isFinite(audio.duration) ? audio.duration : 0
+    audio.volume = volumeValue.value / 100
+    loadError.value = ''
 }
 
-const loadSuccess = async () => {
-    await waitUntil(() => audioElement.value && audioElement.value.duration > 0)
-    // 获取音频总长度 
-    duration.value = audioElement.value.duration
-    // 播放位置发生变化时 实时更新当前播放时间
-    audioElement.value.addEventListener('timeupdate', () => {
-        if (!flag_Input) {
-            currentTime.value = audioElement.value.currentTime
-            inputeProgress.value = (currentTime.value / duration.value) * 100
-        }
-    })
-    // 音频播放结束时 重置播放状态
-    audioElement.value.addEventListener('ended', () => {
-        flag_isPlay = false
-        isPlay.value = 'iconfont icon-kaishi1'
-        currentTime.value = 0
-        inputeProgress.value = 0
+const handleTimeUpdate = () => {
+    const audio = audioElement.value
+    if (!audio || isSeeking.value) return
 
-    })
+    currentTime.value = Number.isFinite(audio.currentTime) ? audio.currentTime : 0
+    progressValue.value = duration.value > 0
+        ? Math.min(100, (currentTime.value / duration.value) * 100)
+        : 0
 }
-watch(() => props.musicUrl, () => {
-    loadSuccess() // 切换音频时调用
+
+const previewProgress = () => {
+    isSeeking.value = true
+    currentTime.value = duration.value > 0
+        ? (progressValue.value / 100) * duration.value
+        : 0
+}
+
+const commitProgress = () => {
+    const audio = audioElement.value
+    if (audio && duration.value > 0) {
+        audio.currentTime = (progressValue.value / 100) * duration.value
+        currentTime.value = audio.currentTime
+    }
+    isSeeking.value = false
+}
+
+const handleEnded = () => {
+    isPlaying.value = false
+    currentTime.value = 0
+    progressValue.value = 0
+}
+
+const handleAudioError = () => {
+    isPlaying.value = false
+    loadError.value = '音乐加载失败，请重新选择歌曲'
+}
+
+const toggleRepeat = () => {
+    isRepeat.value = !isRepeat.value
+}
+
+const toggleFavorite = () => {
+    isFavorite.value = !isFavorite.value
+}
+
+const updateVolume = () => {
+    if (audioElement.value) {
+        audioElement.value.volume = volumeValue.value / 100
+    }
+}
+
+const volumeDown = () => {
+    volumeValue.value = Math.max(0, volumeValue.value - 10)
+    updateVolume()
+}
+
+const volumeUp = () => {
+    volumeValue.value = Math.min(100, volumeValue.value + 10)
+    updateVolume()
+}
+
+const stopPlayer = () => {
+    if (audioElement.value) {
+        audioElement.value.pause()
+        audioElement.value.currentTime = 0
+    }
+    resetPlayer()
+    closePlayer()
+}
+
+const handleKeydown = (event) => {
+    if (event.key === 'Escape' && playerMode.value === 'expanded') {
+        minimizePlayer()
+    }
+}
+
+const handlePointerUp = () => {
+    if (isSeeking.value) commitProgress()
+}
+
+onMounted(() => {
+    document.addEventListener('keydown', handleKeydown)
+    document.addEventListener('pointerup', handlePointerUp)
 })
 
-// 根据拖动进度条更新时间进度
-const updateProgress = () => {
-    if (audioElement.value) {
-        currentTime.value = (inputeProgress.value / 100) * audioElement.value.duration;
-        //用户开始拖动
-        flag_Input = true
-    }
-}
-// 根据进度条位置更新音频进度
-const updateMusic = () => {
-    if (audioElement.value) {
-        audioElement.value.currentTime = (inputeProgress.value / 100) * audioElement.value.duration;
-    }
-}
+onUnmounted(() => {
+    document.removeEventListener('keydown', handleKeydown)
+    document.removeEventListener('pointerup', handlePointerUp)
+})
 
-//格式化时间
 const formatTime = (seconds) => {
+    if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
+
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`
 }
-
-
-onMounted(() => {
-    document.addEventListener('mouseup', handleMouseUp)
-    document.addEventListener('keydown', handleKeydown)
-})
-
-
-onUnmounted(() => {
-    document.removeEventListener('mousedup', handleMouseUp)
-    document.removeEventListener('keydown', handleKeydown)
-})
-// 监听鼠标抬起事件，结束拖动
-const handleMouseUp = () => {
-    if (flag_Input) {
-        flag_Input = false
-    }
-}
-//退出时执行
-const exitPlayer = () => {
-    emits('show', false)
-    isPlay.value = 'iconfont icon-kaishi1'
-    inputeProgress.value = 0
-    currentTime.value = 0
-    if (showVolume.value) volume()
-    if (flag_favorite) favorite()
-    if (flag_repeat) repeat()
-
-}
-// ESC键退出
-const handleKeydown = (event) => {
-    if (event.key === 'Escape') {
-        exitPlayer();
-    }
-}
-
-//循环播放
-const repeat = () => {
-    flag_repeat = !flag_repeat
-    repeat_color.value = flag_repeat ? 'color:#ff2c80' : ''
-    if (audioElement.value) {
-        audioElement.value.loop = flag_repeat
-    }
-}
-const favorite = () => {
-    flag_favorite = !flag_favorite
-    favorite_color.value = flag_favorite ? 'color:#ff2c80' : ''
-}
-const volume = () => {
-    showVolume.value = !showVolume.value
-    volume_color.value = showVolume.value ? 'color:#ff2c80' : ''
-}
-
-//音量设置
-const volumeDown = () => {
-    if (audioElement.value && inputRange.value >= 10) {
-        inputRange.value -= 10
-        audioElement.value.volume = inputRange.value / 100
-    } else {
-        inputRange.value = 0
-        audioElement.value.volume = 0
-    }
-}
-const volumeUp = () => {
-    if (audioElement.value && inputRange.value <= 90) {
-        inputRange.value += 10
-        audioElement.value.volume = inputRange.value / 100
-    } else {
-        inputRange.value = 100
-        audioElement.value.volume = 1
-    }
-}
-const updateVolume = () => {
-    if (audioElement.value) {
-        audioElement.value.volume = inputRange.value / 100
-    }
-}
-
 </script>
 
 <style scoped>
 .cover {
     position: fixed;
-    top: 0;
-    left: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
+    padding: 24px;
     font-family: '优设标题黑';
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
-    animation: fadeIn 0.3s ease;
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
+    z-index: 1100;
+    animation: fadeIn .3s ease;
+    background: var(--bg-dialog);
     backdrop-filter: blur(15px);
 }
 
-.icon-guanbi {
+.music-element {
+    display: none;
+}
+
+.close-button {
     position: absolute;
     top: 15px;
     right: 20px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--text-primary);
     cursor: pointer;
+}
+
+.close-button:hover,
+.close-button:focus-visible {
+    color: var(--mk-primary);
+}
+
+.close-button:focus-visible,
+.btn-box button:focus-visible,
+.play:focus-visible,
+.volume-step:focus-visible {
+    outline: 2px solid var(--mk-primary);
+    outline-offset: 2px;
 }
 
 .img-box img {
-    border-radius: 50px;
+    display: block;
+    width: 100px;
+    height: 100px;
     margin-bottom: 20px;
-}
-
-.cover input[type=range] {
-    -webkit-appearance: none !important;
-    appearance: none;
-    margin: 0;
-    padding: 0;
-    height: 5px;
-    outline: none;
-    cursor: pointer;
-    border-radius: 5px;
-
-}
-
-/* Chrome, Safari, Edge, Opera */
-.cover input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none !important;
-    /* 移除默认thumb样式 */
-    background: rgb(60, 59, 59);
-    height: 8px;
-    width: 8px;
     border-radius: 50%;
+    object-fit: cover;
     box-shadow: var(--shadow);
 }
-
-/* Firefox */
-.cover input[type=range]::-moz-range-thumb {
-    background: rgb(60, 59, 59);
-    height: 8px;
-    width: 8px;
-    border-radius: 100%;
-}
-
-/* Internet Explorer 10+ */
-.cover input[type=range]::-ms-thumb {
-    -webkit-appearance: none !important;
-    appearance: none;
-    /* 标准属性 */
-    background: rgb(60, 59, 59);
-    height: 8px;
-    width: 8px;
-    border-radius: 100%;
-}
-
 
 .info {
     display: flex;
@@ -318,75 +402,211 @@ const updateVolume = () => {
     font-size: 15px;
 }
 
-.btn-box {
-    margin: 10px;
-}
-
-.btn-box i {
-    font-size: 16px;
-    margin: 0 15px;
+.cover input[type='range'] {
+    appearance: none;
+    margin: 0;
+    padding: 0;
+    height: 5px;
+    border: 0;
+    border-radius: 5px;
+    outline: none;
     cursor: pointer;
 }
 
-.btn-box i:active {
-    color: #ff2c80;
+.cover input[type='range']:focus-visible {
+    outline: 2px solid var(--mk-primary);
+    outline-offset: 4px;
+}
+
+.cover input[type='range']:disabled {
+    cursor: not-allowed;
+    opacity: .5;
+}
+
+.cover input[type='range']::-webkit-slider-thumb {
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    box-shadow: var(--shadow);
+}
+
+.cover input[type='range']::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--text-primary);
 }
 
 .volume-box {
     display: flex;
     align-items: center;
-    font-weight: 600;
-    font-size: 18px;
-    gap: 5px;
+    gap: 7px;
+    margin-top: 10px;
 }
 
-.volume-box .volume-down,
-.volume-box .volume-up {
+.volume-box input[type='range'] {
+    width: 150px;
+}
+
+.volume-step {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 21px;
+    font-weight: 600;
     cursor: pointer;
 }
 
-.volume-box .volume-up::selection {
-    background-color: unset;
+.btn-box {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    margin: 12px;
 }
 
-.volume-box input[type=range] {
-    height: 5px;
-    width: 150px;
+.btn-box button {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.btn-box i {
+    font-size: 16px;
+}
+
+.btn-box i.active,
+.btn-box button:hover i {
+    color: var(--mk-primary);
 }
 
 .music-box {
-    display: flex;
-    justify-content: center;
+    width: min(100%, 260px);
+    display: grid;
+    grid-template-columns: 42px minmax(120px, 1fr) 42px;
     align-items: center;
+    gap: 8px;
 }
 
-.music-box input[type=range] {
-    height: 5px;
-    width: 150px;
+.music-box input[type='range'] {
+    width: 100%;
 }
 
-.music-box .current-time {
-    position: relative;
-    right: 10px;
+.current-time,
+.duration {
+    font-variant-numeric: tabular-nums;
+    text-align: center;
 }
 
-.music-box .duration {
-    position: relative;
-    left: 10px;
+.player-error {
+    margin: 12px 0 0;
+    color: var(--mk-primary);
+    font-size: 14px;
 }
 
-.icon-kaishi1,
-.icon-zanting {
-    padding: 20px;
-    font-size: 24px;
+.play {
+    width: 64px;
+    height: 64px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--text-primary);
     cursor: pointer;
 }
 
-/* 设置为不可选中 属性 */
+.play:hover {
+    color: var(--mk-primary);
+}
+
+.play i {
+    font-size: 28px;
+}
+
 .unselectable {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
     user-select: none;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .cover {
+        min-height: 100dvh;
+        padding: 28px 22px;
+    }
+
+    .close-button {
+        top: 18px;
+        right: 18px;
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+    }
+
+    .img-box img {
+        width: min(46vw, 180px);
+        height: min(46vw, 180px);
+    }
+
+    .info .MusicName {
+        font-size: 22px;
+        text-align: center;
+    }
+
+    .btn-box {
+        gap: 28px;
+    }
+
+    .btn-box i {
+        font-size: 22px;
+    }
+
+    .volume-box {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .volume-box input[type='range'] {
+        width: min(58vw, 260px);
+    }
+
+    .music-box {
+        width: min(100%, 340px);
+        grid-template-columns: 44px minmax(0, 1fr) 44px;
+    }
+
+    .play {
+        width: 70px;
+        height: 70px;
+    }
+
+    .play i {
+        font-size: 34px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cover {
+        animation: none;
+    }
 }
 </style>

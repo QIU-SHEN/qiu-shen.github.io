@@ -70,7 +70,7 @@ const stopRippleEffect = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  min-height: 100%;
 }
 
 .circle-button {
@@ -228,5 +228,45 @@ const stopRippleEffect = () => {
 
 .circle-button:hover::before {
   opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .join-container {
+    min-height: 55dvh;
+  }
+
+  .circle-button {
+    width: min(78vw, 320px);
+    height: min(78vw, 320px);
+    animation: breathe 3s ease-in-out infinite;
+  }
+
+  .circle-text {
+    font-size: clamp(36px, 14vw, 72px);
+    opacity: 1;
+  }
+
+  .circle-button:hover {
+    width: min(78vw, 320px);
+    height: min(78vw, 320px);
+    animation: breathe 3s ease-in-out infinite;
+  }
+
+  .circle-button:hover .circle-text {
+    font-size: clamp(36px, 14vw, 72px);
+    animation: none;
+  }
+
+  @keyframes rippleExpand {
+    0% {
+      transform: scale(1);
+      opacity: var(--opacity, 0.6);
+    }
+
+    100% {
+      transform: scale(1.35);
+      opacity: 0;
+    }
+  }
 }
 </style>

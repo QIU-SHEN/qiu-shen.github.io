@@ -14,14 +14,16 @@
 .about-me {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    min-height: 100%;
     width: 80vw;
     color: var(--mk-primary);
     font-family: '优设标题黑', sans-serif;
+    padding: 40px 0 90px;
+    line-height: 1.7;
 }
 h1 {
     margin: 0;
-    font-size: 40px;
+    font-size: clamp(30px, 8vw, 40px);
 }
 .back-button {
     align-self: center;
@@ -33,12 +35,25 @@ h1 {
     border-radius: 5px;
     cursor: pointer;
     font-family: '优设标题黑', sans-serif;
-    position: absolute;
-    bottom: 50px;
+    margin-top: auto;
 }
 .back-button:hover {
     background-color: var(--mk-primary);
     color: white;
     transition: 0.3s;
+}
+
+@media (max-width: 768px) {
+    .about-me {
+        width: 100%;
+        padding: 0 4px 24px;
+        font-size: 15px;
+    }
+
+    .back-button {
+        width: 100%;
+        min-height: 42px;
+        margin-top: 24px;
+    }
 }
 </style>

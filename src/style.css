@@ -17,9 +17,9 @@
     0 0 0 1px rgba(255, 255, 255, 0.05), 
     inset 0 1px 0 rgba(255, 255, 255, 0.1);   /* 各种模块 卡片 阴影 */
   --shadow2:0 4px 8px rgba(255, 255, 255, 0.1); /* 日志阴影 */
-  --bg-image1: url('public/dark1.png');
-  --bg-image2: url('public/dark2.png');
-  --bg-image3: url('public/dark3.png');
+  --bg-image1: url('/dark1.png');
+  --bg-image2: url('/dark2.png');
+  --bg-image3: url('/dark3.png');
 }
 
 .nodark {
@@ -39,15 +39,16 @@
   --border-second:rgba(105, 125, 255, 0.1);
   --shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   --shadow2:0 4px 8px rgba(0, 0, 0, 0.1);
-  --bg-image1: url('public/light1.png');
-  --bg-image2: url('public/light2.png');
-  --bg-image3: url('public/light3.png');
+  --bg-image1: url('/light1.png');
+  --bg-image2: url('/light2.png');
+  --bg-image3: url('/light3.png');
 }
 
 body{
     margin: 0;
     padding: 0;
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
     display: flex;
     justify-content: center;
@@ -66,6 +67,17 @@ body{
     width: 100%;
     
 }
+
+* {
+  box-sizing: border-box;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
 .divider{
     border: 1px solid #ccc;  /* 有边框 */
     margin: 10px 0;          /* 有间距 */
@@ -74,5 +86,6 @@ body{
 
 @font-face {
     font-family: '优设标题黑';
-    src: url('src/assets/YouSheBiaoTiHei-2.ttf');
+    src: url('./assets/YouSheBiaoTiHei-2.ttf') format('truetype');
+    font-display: swap;
 }

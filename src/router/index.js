@@ -1,8 +1,12 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 
+const createHistory = import.meta.env.VITE_USE_HASH_ROUTER === 'true'
+  ? createWebHashHistory
+  : createWebHistory
+
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
@@ -17,12 +21,16 @@ const router = createRouter({
       component: () => import('../views/About.vue')
     },
     {
-      path: '/About/aboutMe',
-      component: () => import('../views/aboutMe.vue')
+      path: '/Project',
+      component: () => import('../views/Project.vue')
     },
     {
-      path: '/About/aboutSite',
-      component: () => import('../views/aboutSite.vue')
+      path: '/Project/ai-sales-coach',
+      component: () => import('../views/AiSalesCoach.vue')
+    },
+    {
+      path: '/Project/car-rental',
+      component: () => import('../views/CarRental.vue')
     },
     {
       path: '/Notes',

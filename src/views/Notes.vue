@@ -4,6 +4,7 @@
     <aside class="doc-sidebar">
       <div class="sidebar-header">
         <h2>笔记</h2>
+        <span class="sidebar-count">{{ notes.length }}</span>
       </div>
       <ul class="sidebar-list">
         <li
@@ -13,10 +14,13 @@
           @click="router.push(`/Notes/${n.id}`)"
         >
           <span class="sidebar-item-title">{{ n.title }}</span>
-          <div class="sidebar-item-tags" v-if="n.tags.length">
-            <Tag v-for="t in n.tags" :key="t" :tag="t" />
+          <div class="sidebar-item-meta">
+            <span v-if="n.updatedAt">{{ formatDate(n.updatedAt) }}</span>
+            <span v-if="n.updatedAt && n.tags.length" aria-hidden="true">·</span>
+            <div v-if="n.tags.length" class="sidebar-item-tags">
+              <Tag v-for="t in n.tags" :key="t" :tag="t" />
+            </div>
           </div>
-          <span class="sidebar-item-meta">{{ formatDate(n.updatedAt) }}</span>
         </li>
         <li v-if="notes.length === 0" class="sidebar-empty">
           暂无笔记
@@ -27,13 +31,11 @@
     <!-- 右侧主内容 -->
     <main class="doc-main">
       <div v-if="notes.length === 0" class="empty-hero">
-        <i class="iconfont icon-list"></i>
         <h2>还没有笔记</h2>
-        <p>在 src/notes/ 下新建一个 .md 文件即可</p>
       </div>
       <div v-else class="welcome">
-        <h2>选择一篇笔记开始阅读</h2>
-        <p>从左侧列表中选择一篇笔记吧。</p>
+        <span>{{ notes.length }} 篇</span>
+        <h2>选择一篇笔记</h2>
       </div>
     </main>
   </div>
@@ -51,7 +53,7 @@ const formatDate = (ts) => {
   if (!ts) return ''
   const d = new Date(ts)
   const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`
 }
 </script>
 
@@ -64,14 +66,14 @@ const formatDate = (ts) => {
   position: fixed;
   top: 0;
   left: 0;
+  background-color: var(--bg-primary);
 }
 
-/* 左侧侧边栏 */
 .doc-sidebar {
-  width: 260px;
+  width: 248px;
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
-  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--bg-secondary);
+  background-color: var(--bg-primary);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -83,14 +85,19 @@ const formatDate = (ts) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 26px 20px 18px;
 }
 .sidebar-header h2 {
   margin: 0;
-  font-size: 18px;
-  color: var(--mk-primary);
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-primary);
   font-family: '优设标题黑', sans-serif;
+}
+.sidebar-count {
+  color: var(--text-primary);
+  font-size: 12px;
+  opacity: 0.38;
 }
 
 .sidebar-list {
@@ -98,55 +105,61 @@ const formatDate = (ts) => {
   overflow-y: auto;
   list-style: none;
   margin: 0;
-  padding: 8px 0;
+  padding: 2px 10px 72px;
 }
 .sidebar-list::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 .sidebar-list::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 2px;
 }
 
 .sidebar-item {
-  padding: 10px 16px;
+  padding: 11px 10px 12px;
   cursor: pointer;
-  transition: all 0.2s;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  border-left: 3px solid transparent;
+  gap: 7px;
 }
-.sidebar-item:hover {
-  background-color: var(--bg-primary);
-  border-left-color: var(--mk-primary);
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-item:hover .sidebar-item-title {
+    color: var(--mk-primary);
+  }
 }
 
 .sidebar-item-title {
   font-size: 14px;
+  line-height: 1.35;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.15s ease;
 }
 .sidebar-item-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 7px;
 }
 .sidebar-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+}
+.sidebar-item-meta > span {
+  opacity: 0.48;
 }
 
 .sidebar-empty {
-  padding: 20px 16px;
+  padding: 24px 10px;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 13px;
+  opacity: 0.45;
 }
 
-/* 右侧主内容 */
 .doc-main {
   flex: 1;
   min-width: 0;
@@ -156,52 +169,63 @@ const formatDate = (ts) => {
   justify-content: center;
 }
 
-.empty-hero {
-  text-align: center;
-  color: var(--text-secondary);
-}
-.empty-hero .iconfont {
-  font-size: 48px;
-  color: var(--mk-primary);
-  opacity: 0.5;
+.empty-hero,
+.welcome {
+  text-align: left;
+  color: var(--text-primary);
 }
 .empty-hero h2 {
-  margin: 16px 0 8px;
-  font-size: 20px;
-  color: var(--text-primary);
-}
-.empty-hero p {
-  font-size: 14px;
+  margin: 0;
+  font-size: 26px;
+  font-family: '优设标题黑', sans-serif;
 }
 
-.welcome {
-  text-align: center;
-  color: var(--text-secondary);
+.welcome span {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  opacity: 0.42;
 }
 .welcome h2 {
-  margin: 0 0 8px;
-  font-size: 20px;
+  margin: 0;
+  font-size: 30px;
   color: var(--text-primary);
-}
-.welcome p {
-  font-size: 14px;
+  font-family: '优设标题黑', sans-serif;
 }
 
 @media (max-width: 768px) {
   .doc-layout {
+    position: relative;
+    top: auto;
+    left: auto;
     flex-direction: column;
-    height: auto;
-    overflow: visible;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
   }
   .doc-sidebar {
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid var(--border);
-    max-height: 200px;
+    border-bottom: 1px solid var(--bg-secondary);
+    max-height: 36dvh;
+  }
+  .sidebar-header {
+    padding: 4px 10px 14px;
+  }
+  .sidebar-header h2 {
+    font-size: 21px;
+  }
+  .sidebar-list {
+    padding: 0 0 20px;
   }
   .doc-main {
-    overflow-y: visible;
-    padding: 20px;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 20px 12px;
+  }
+  .welcome h2,
+  .empty-hero h2 {
+    font-size: 24px;
   }
 }
 </style>

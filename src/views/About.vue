@@ -1,109 +1,72 @@
 <template>
-  <div class="shell">
-    <div class="content">
-
-      <div class="item" @click="router.push('/About/aboutMe')">
-        <h2>关于我</h2>
-      </div>
-
-      <div class="item" @click="router.push('/About/aboutSite')">
-          <h2>关于网站</h2>
-      </div>
-
-      <div class="item">
-      </div>
-
-    </div>
-  </div>
-  <div class="nothing" style="height: 200px;"></div>
+  <main class="about-page">
+    <article class="about-content">
+      <Markdown :source="profileContent" />
+      <button class="back-button" type="button" @click="$router.go(-1)">返回</button>
+    </article>
+  </main>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router';
-const router = useRouter();
+import Markdown from '../compomnent/markdown.vue'
+import profileContent from '../content/profile.md?raw'
 </script>
 
 <style scoped>
-.shell {
-  position: relative;
-  width: 60vw;
-  height: 40vw;
-  max-width: 380px;
-  max-height: 250px;
-  margin: 0;
-  color: black;
-  perspective: 1000px;
-  transform-origin: center;
-}
-
-.content {
-  display: flex;
-  justify-self: center;
-  align-items: center;
-  position: absolute;
+.about-page {
   width: 100%;
+  max-width: 100%;
   height: 100%;
-  transform-origin: center;
-  transform-style: preserve-3d;
-  transform: translateZ(-30vw) rotateY(0);
-  animation: carousel 9s infinite cubic-bezier(0.77, 0, 0.175, 1) forwards;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 76px 24px 96px;
+  box-sizing: border-box;
 }
 
-.item {
-  color: var(--text-third);
-  display: flex;
-  justify-content: center; 
-  align-items: center;
-  font: 200 50px '优设标题黑';
-  position: absolute;
-  width: 60vw;
-  height: 40vw;
-  max-width: 380px;
-  max-height: 250px;
-  box-shadow:var(--shadow);
-  border-radius: 6px;
-  background-size: cover;
-  background-position: center;
-  
-  -webkit-box-reflect: below 25px linear-gradient(transparent 5%,  rgba(255, 255, 255, 0.3));
+.about-content {
+  width: min(760px, 100%);
+  min-width: 0;
+  margin: 0 auto;
+  overflow-wrap: anywhere;
+}
+
+.back-button {
+  display: block;
+  margin: 44px auto 0;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 5px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: '优设标题黑', sans-serif;
+  font-size: 18px;
   cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
 }
 
-.item:nth-child(1) {
-  background-image: var(--bg-image1);
-  transform: rotateY(0) translateZ(35vw);
+.back-button:hover,
+.back-button:focus-visible {
+  background-color: var(--mk-primary);
+  color: white;
 }
 
-.item:nth-child(2) {
-  background-image: var(--bg-image2);
-  transform: rotateY(120deg) translateZ(35vw);
-}
-
-.item:nth-child(3) {
-  background-image: var(--bg-image3);
-  transform: rotateY(240deg) translateZ(35vw);
-}
-
-@keyframes carousel {
-
-  0%,
-  17.5% {
-    transform: translateZ(-35vw) rotateY(0);
+@media (max-width: 768px) {
+  .about-page {
+    width: auto;
+    overflow-x: hidden;
+    padding: 0 4px 40px;
   }
 
-  27.5%,
-  45% {
-    transform: translateZ(-35vw) rotateY(-120deg);
+  .about-content {
+    width: 100%;
+    max-width: 100%;
   }
 
-  55%,
-  72.5% {
-    transform: translateZ(-35vw) rotateY(-240deg);
-  }
-
-  82.5%,
-  100% {
-    transform: translateZ(-35vw) rotateY(-360deg);
+  .back-button {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 32px;
   }
 }
 </style>

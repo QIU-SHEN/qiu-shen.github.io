@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.serena/
 .DS_Store
 dist
 dist-ssr
@@ -35,3 +36,7 @@ coverage
 
 # Server data
 server/data/*.json
+
+.vercel
+.env.*
+!.env.example

@@ -8,7 +8,7 @@
         </div>
         <div class="nav-links">
           <span @click="router.push('/Home'); aboutTitle = 'Home'">Home</span>
-          <span @click="router.push('/About'); aboutTitle = 'About'">About</span>
+          <span @click="router.push('/Project'); aboutTitle = 'Project'">Project</span>
           <span @click="router.push('/Notes'); aboutTitle = 'Notes'">Notes</span>
           <span @click="router.push('/Music'); aboutTitle = 'Music'">Music</span>
           <span @click="router.push('/Join'); aboutTitle = 'Join'">Join</span>
@@ -24,37 +24,52 @@
     <div class="contentRouter">
       <router-view></router-view>
     </div>
+
+    <!-- 全局音乐播放器，切换路由时保持播放 -->
+    <MusicPlayer />
+
     <footer>
       <p>© 2025 QIUSHEN. All rights reserved.</p>
     </footer>
 
-    <!-- 浮动功能按钮（任务 / AI 助手） -->
-    <div class="float-btn iconfont icon-list" @click="openDrawer" title="功能菜单"></div>
+    <!-- 浮动按钮（AI 助手） -->
+    <div
+      v-if="aiAssistantEnabled"
+      class="float-btn iconfont icon-list"
+      @click="isOpen = !isOpen"
+      title="AI 助手"
+    ></div>
 
-    <!-- 多功能抽屉组件 -->
-    <TaskDrawer v-model:isOpen="isOpen" v-model:activeTab="activeTab" @close="isOpen = false" />
+    <!-- AI 助手抽屉 -->
+    <TaskDrawer
+      v-if="aiAssistantEnabled"
+      v-model:isOpen="isOpen"
+      @close="isOpen = false"
+      ref="taskDrawerRef"
+    />
   </div>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router';
-import { ref } from 'vue';
-import TaskDrawer from './compomnent/taskDrawer.vue';
+import { defineAsyncComponent, ref, watch } from 'vue';
+import MusicPlayer from './compomnent/musicPlayer.vue';
 
 const router = useRouter();
+const aiAssistantEnabled = import.meta.env.VITE_ENABLE_AI_ASSISTANT !== 'false';
+const TaskDrawer = aiAssistantEnabled
+  ? defineAsyncComponent(() => import('./compomnent/taskDrawer.vue'))
+  : null;
 const aboutTitle = ref('Home');
 const flag_isDark = ref(true);
 const isOpen = ref(false);
-const activeTab = ref('chat');
+const taskDrawerRef = ref(null);
 
-const openDrawer = () => {
-  if (isOpen.value) {
-    // 如果已打开，切到另一个 tab；如果同一 tab 就关闭
-    activeTab.value = activeTab.value === 'task' ? 'chat' : 'task';
-  } else {
-    isOpen.value = true;
-  }
-};
+if (aiAssistantEnabled) {
+  watch(isOpen, (v) => {
+    if (v) taskDrawerRef.value?.initChat();
+  });
+}
 </script>
 
 
@@ -81,6 +96,7 @@ const openDrawer = () => {
   padding: 0;
   height: 100vh;
   width: 100vw;
+  box-sizing: border-box;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -114,6 +130,16 @@ nav {
   /* 透明度 */
   z-index: 100;
   /* 确保导航栏在最上层 */
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marker {
+  display: none;
 }
 
 .nav-container:hover nav {
@@ -222,5 +248,116 @@ footer {
 
 .float-btn:active {
   transform: translateX(0) scale(0.95);
+}
+
+@media (max-width: 768px) {
+  .logo {
+    gap: 10px;
+  }
+
+  .title1 {
+    font-size: 20px;
+    border-radius: 12px;
+  }
+
+  .logo strong {
+    display: none;
+  }
+
+  .contentRouter {
+    min-height: 100dvh;
+    height: 100dvh;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 96px 14px 58px;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    z-index: 1000;
+  }
+
+  nav {
+    top: 0;
+    height: auto;
+    min-height: 72px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 12px;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    font-size: 15px;
+    opacity: 0.96;
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-container:hover nav,
+  .nav-container:not(:hover) nav {
+    top: 0;
+    transition: none;
+  }
+
+  .nav-links {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .nav-links span {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 2px;
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .style {
+    width: 32px;
+    height: 32px;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  footer {
+    height: 36px;
+    font-size: 12px;
+    padding: 0 12px;
+    box-sizing: border-box;
+  }
+
+  .float-btn {
+    top: auto;
+    right: 10px;
+    bottom: 54px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    transform: none;
+    font-size: 22px;
+  }
+
+  .float-btn:hover {
+    transform: scale(1.04);
+  }
+}
+
+@media (max-width: 420px) {
+  .contentRouter {
+    padding-top: 104px;
+  }
+
+  .nav-links span {
+    font-size: 13px;
+  }
 }
 </style>
