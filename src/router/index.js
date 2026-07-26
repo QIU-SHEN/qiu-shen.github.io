@@ -33,6 +33,10 @@ const router = createRouter({
       component: () => import('../views/CarRental.vue')
     },
     {
+      path: '/Project/ai-customer-lifecycle',
+      component: () => import('../views/AiCustomerLifecycle.vue')
+    },
+    {
       path: '/Notes',
       component: () => import('../views/Notes.vue')
     },

@@ -9,7 +9,9 @@
         <h2>汽车租贸</h2>
       </div>
 
-      <div class="item"></div>
+      <div class="item" @click="router.push('/Project/ai-customer-lifecycle')">
+        <h2>AI运营引擎</h2>
+      </div>
     </div>
   </div>
   <div class="nothing" style="height: 200px;"></div>
